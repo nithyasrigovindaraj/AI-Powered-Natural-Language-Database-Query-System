@@ -13,8 +13,28 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+const multer = require("multer");
+const upload = multer({ dest: "uploads/" });
 
+app.post("/upload", upload.single("file"), (req, res) => {
+  try {
+    console.log("File received:", req.file);
 
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    return res.json({
+      success: true,
+      message: "File uploaded successfully",
+      filename: req.file.originalname
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  }
+});
 // Connect to MongoDB Using Memory Server by default so users don't need it installed!
 async function startServer() {
   try {
