@@ -37,7 +37,7 @@ function App() {
   const fetchCollections = async () => {
     try {
       const q = dbEngine ? `?engine=${dbEngine}` : '';
-      const res = await fetch(`http://localhost:5000/api/collections${q}`);
+      const res = await fetch(`/api/collections${q}`);
       const data = await res.json();
       if (data.collections) {
         setCollections(data.collections);
@@ -133,7 +133,7 @@ function App() {
     }, []);
 
     try {
-      const response = await fetch('http://localhost:5000/api/chat', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -186,7 +186,7 @@ function App() {
     formData.append('dbEngine', dbEngine);
 
     try {
-      const res = await fetch('http://localhost:5000/api/upload', {
+      const res = await fetch('/api/upload', {
         method: 'POST',
         body: formData
       });
@@ -241,7 +241,7 @@ function App() {
     setIsLoading(true);
     setMessages(prev => [...prev, { sender: 'user', text: `*[System: View Entire DB '${col}']*` }]);
     try {
-      const res = await fetch(`http://localhost:5000/api/collections/${col}/data`);
+      const res = await fetch(`/api/collections/${col}/data`);
       const data = await res.json();
       if (data.success) {
         setMessages(prev => [...prev, {
@@ -262,7 +262,7 @@ function App() {
     setMessages(prev => [...prev, { sender: 'user', text: `*[System: Delete DB '${col}']*` }]);
     try {
       const q = dbEngine ? `?engine=${dbEngine}` : '';
-      const res = await fetch(`http://localhost:5000/api/collections/${col}${q}`, { method: 'DELETE' });
+      const res = await fetch(`/api/collections/${col}${q}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         setCollections(data.collections);
