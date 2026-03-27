@@ -4,6 +4,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './index.css';
 
+const BASE_URL = "https://ai-db-backend1.onrender.com/api";
+
 function App() {
   const [dbEngine, setDbEngine] = useState(null);
   const [showSplash, setShowSplash] = useState(true);
@@ -37,7 +39,7 @@ function App() {
   const fetchCollections = async () => {
     try {
       const q = dbEngine ? `?engine=${dbEngine}` : '';
-      const res = await fetch(`/api/collections${q}`);
+      const res = await fetch(`${BASE_URL}/collections${q}`);
       const data = await res.json();
       if (data.collections) {
         setCollections(data.collections);
@@ -133,7 +135,7 @@ function App() {
     }, []);
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch(`${BASE_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -186,7 +188,7 @@ function App() {
     formData.append('dbEngine', dbEngine);
 
     try {
-      const res = await fetch('/api/upload', {
+      const res = await fetch(`${BASE_URL}/upload`, {
         method: 'POST',
         body: formData
       });
@@ -241,7 +243,7 @@ function App() {
     setIsLoading(true);
     setMessages(prev => [...prev, { sender: 'user', text: `*[System: View Entire DB '${col}']*` }]);
     try {
-      const res = await fetch(`/api/collections/${col}/data`);
+      const res = await fetch(`${BASE_URL}/collections/${col}/data`);
       const data = await res.json();
       if (data.success) {
         setMessages(prev => [...prev, {
@@ -262,7 +264,7 @@ function App() {
     setMessages(prev => [...prev, { sender: 'user', text: `*[System: Delete DB '${col}']*` }]);
     try {
       const q = dbEngine ? `?engine=${dbEngine}` : '';
-      const res = await fetch(`/api/collections/${col}${q}`, { method: 'DELETE' });
+      const res = await fetch(`${BASE_URL}/collections/${col}${q}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         setCollections(data.collections);
