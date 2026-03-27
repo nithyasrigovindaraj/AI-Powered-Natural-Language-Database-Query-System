@@ -1,0 +1,96 @@
+const { GoogleGenAI } = require('@google/genai');
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }); // User should place key in .env
+
+async function processUserIntent(naturalQuery, chatHistory, availableCollections, allSchemasSummary, activeCollection, dbEngine) {
+  const prompt = `
+You are a highly capable AI Database Assistant for managing a NoSQL database. 
+Your goal is to parse user intents and generate executable queries dynamically. 
+
+IMPORTANT DIRECTIVE: The user has selected **${dbEngine || 'MongoDB'}** as their NoSQL Database Engine. 
+You MUST format all syntax output according to ${dbEngine || 'MongoDB'} standards inside the property "rawQueryString".
+
+Current collections available: [${availableCollections.join(', ')}]
+Currently Active/Focused Collection: ${activeCollection || 'None'}
+Current schema details:
+${allSchemasSummary}
+
+Recent conversation history:
+${chatHistory.map(h => `User: ${h.user}\nAssistant: ${h.bot}`).join('\n')}
+
+Latest User Input: "${naturalQuery}"
+
+Respond strictly with valid JSON representing the appropriate action. NO MARKDOWN, NO COMMENTS, ONLY JSON!
+Look at the user's latest input and decide which "action" they are intending:
+
+1. ACTION: "ASK_CLARIFICATION" 
+   Choose this if they are giving an intent to create a table/database but haven't provided enough info (e.g., they didn't provide table name, columns, or rows). 
+   CRITICAL RULE: Even if they provided table name, columns, and rows in their first prompt, you MUST still use "ASK_CLARIFICATION" to ask for their final confirmation (e.g., "Are you sure you want to create...?"). ONLY proceed to "CREATE_COLLECTION" if they say "yes" or confirm it in the history sequence.
+   Return format:
+   { "action": "ASK_CLARIFICATION", "replyMessage": "..." }
+
+2. ACTION: "CREATE_COLLECTION"
+   Choose this ONLY AFTER the user has confirmed they want to proceed with creation (e.g., they replied "yes" to your confirmation), AND you know the table name and columns.
+   Return format:
+   {
+     "action": "CREATE_COLLECTION",
+     "replyMessage": "Creating table 'salaries'...",
+     "createDetails": {
+        "collectionName": "...",
+        "columns": ["col1", "col2"],
+        "sampleData": [ {"col1": "val", "col2": 123} ]
+     }
+   }
+
+3. ACTION: "QUERY"
+   Choose this if the user wants to get, find, or aggregate data from an existing table.
+   CRITICAL RULES:
+   - If the user doesn't explicitly name a table, you MUST use the "Currently Active/Focused Collection" if it's set.
+   - For string matches, ALWAYS use case-insensitive regex! Example: "name": { "$regex": "david", "$options": "i" }. 
+   - Never assume exact case for strings!
+   Return format:
+   {
+     "action": "QUERY",
+     "replyMessage": "Query executed successfully.",
+     "mongoQuery": {
+        "collectionName": "...", /* Use Currently Active/Focused Collection! */
+        "type": "find" or "aggregate" or "findOne",
+        "query": { /* Standard generic JSON object for backend compatibility */ },
+        "options": { /* sort, limit */ },
+        "rawQueryString": "/* The raw native syntax formatted explicitly for ${dbEngine || 'MongoDB'} */"
+     }
+   }
+   CRITICAL: The "query" property MUST be a standard JSON representation so the local executor can mock it.
+   CRITICAL: The "rawQueryString" MUST be beautifully formatted in the exact syntax of the user's chosen DB (${dbEngine || 'MongoDB'}).
+
+4. ACTION: "GENERAL_CHAT"
+   Choose this if the user is just saying hi or chatting.
+   Return format:
+   { "action": "GENERAL_CHAT", "replyMessage": "..." }
+
+Analyze the input and generate the JSON object:
+`;
+
+  try {
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt
+    });
+
+    let resultText = response.text;
+    resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    const parsedJson = JSON.parse(resultText);
+    return parsedJson;
+  } catch (error) {
+    console.error("AI Generate Error: ", error);
+    if (error.status === 429) {
+      throw new Error("Google AI explicitly blocked the request (Error 429: Too Many Requests). Please wait a minute or check your Free Tier API Key limits.");
+    }
+    throw new Error("Failed to process user intent using the AI Model.");
+  }
+}
+
+module.exports = {
+  processUserIntent
+};
