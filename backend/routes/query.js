@@ -34,83 +34,93 @@ router.delete('/collections/:name', async (req, res) => {
 });
 
 router.post('/upload', upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
-  const { dbEngine } = req.body;
-
-  const filePath = req.file.path;
-  const fileName = req.file.originalname;
-  // Create a safe collection name (alphanumeric only)
-  let collectionName = fileName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-
   try {
-     let jsonData = [];
-     if (fileName.endsWith('.csv')) {
-         jsonData = await new Promise((resolve, reject) => {
-             const results = [];
-             fs.createReadStream(filePath)
-               .pipe(csv())
-               .on('data', (data) => results.push(data))
-               .on('end', () => resolve(results))
-               .on('error', reject);
-         });
-     } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-         const workbook = xlsx.readFile(filePath);
-         const sheetName = workbook.SheetNames[0];
-         jsonData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
-     } else {
-         fs.unlinkSync(filePath);
-         return res.status(400).json({ error: 'Only .csv and .xlsx files are supported.' });
-     }
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
-     if (jsonData.length === 0) {
+    const { dbEngine } = req.body;
+    const filePath = req.file.path;
+    const fileName = req.file.originalname;
+    
+    // Create a safe collection name (alphanumeric only)
+    let collectionName = fileName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+
+    let jsonData = [];
+    if (fileName.endsWith('.csv')) {
+        jsonData = await new Promise((resolve, reject) => {
+            const results = [];
+            fs.createReadStream(filePath)
+              .pipe(csv())
+              .on('data', (data) => results.push(data))
+              .on('end', () => resolve(results))
+              .on('error', reject);
+        });
+    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+        const workbook = xlsx.readFile(filePath);
+        const sheetName = workbook.SheetNames[0];
+        jsonData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+    } else {
         fs.unlinkSync(filePath);
-        return res.status(400).json({ error: 'The uploaded file is empty.' });
-     }
+        return res.status(400).json({ error: 'Only .csv and .xlsx files are supported.' });
+    }
 
-     // Automatically cast string representations of numbers to purely Numbers to prevent query logic failures
-     jsonData = jsonData.map(row => {
-        let newRow = {};
-        for(let key in row) {
-           let val = row[key];
-           let cleanKey = key.trim(); // strip bad spaces
-           if (typeof val === 'string') {
-              val = val.trim();
-              if (val !== '' && !isNaN(val)) {
-                 newRow[cleanKey] = Number(val);
-              } else {
-                 newRow[cleanKey] = val;
-              }
-           } else {
-              newRow[cleanKey] = val;
-           }
-        }
-        return newRow;
-     });
+    if (jsonData.length === 0) {
+      fs.unlinkSync(filePath);
+      return res.status(400).json({ error: 'The uploaded file is empty.' });
+    }
 
-     // Extract columns from the first row
-     const columns = Object.keys(jsonData[0]);
+    // Automatically cast string representations of numbers to purely Numbers to prevent query logic failures
+    jsonData = jsonData.map(row => {
+      let newRow = {};
+      for(let key in row) {
+          let val = row[key];
+          let cleanKey = key.trim(); // strip bad spaces
+          if (typeof val === 'string') {
+            val = val.trim();
+            if (val !== '' && !isNaN(val)) {
+                newRow[cleanKey] = Number(val);
+            } else {
+                newRow[cleanKey] = val;
+            }
+          } else {
+            newRow[cleanKey] = val;
+          }
+      }
+      return newRow;
+    });
 
-     // Avoid duplicate collection names
-     const available = dbQueryExecutor.getAvailableCollections();
-     if (available.includes(collectionName)) {
-        collectionName = collectionName + '_' + Date.now();
-     }
+    // Extract columns from the first row
+    const columns = Object.keys(jsonData[0]);
 
-     dbQueryExecutor.registerCollection(collectionName, columns, dbEngine);
-     await dbQueryExecutor.executeQuery(collectionName, 'insertMany', jsonData);
+    // Avoid duplicate collection names
+    const available = dbQueryExecutor.getAvailableCollections();
+    if (available.includes(collectionName)) {
+      collectionName = collectionName + '_' + Date.now();
+    }
 
-     fs.unlinkSync(filePath); // Cleanup
+    dbQueryExecutor.registerCollection(collectionName, columns, dbEngine);
+    await dbQueryExecutor.executeQuery(collectionName, 'insertMany', jsonData);
 
-     res.json({ 
-       success: true, 
-       message: `File '${fileName}' parsed and loaded.`, 
-       collectionName,
-       collections: dbQueryExecutor.getAvailableCollections(dbEngine) 
-     });
-  } catch(e) {
-     if(fs.existsSync(filePath)) fs.unlinkSync(filePath);
-     res.status(500).json({ success: false, error: "Failed to parse file: " + e.message });
+    fs.unlinkSync(filePath); // Cleanup
+
+    return res.json({
+      success: true,
+      message: "File uploaded successfully",
+      file: fileName,
+      collectionName,
+      collections: dbQueryExecutor.getAvailableCollections(dbEngine)
+    });
+
+  } catch (error) {
+    console.error(error);
+    if(req.file && fs.existsSync(req.file.path)) {
+       fs.unlinkSync(req.file.path);
+    }
+    return res.status(500).json({
+      error: "Upload failed",
+      details: error.message
+    });
   }
 });
 
