@@ -200,8 +200,8 @@ router.post('/chat', async (req, res) => {
 
   } catch (error) {
     console.error('Error in /chat:', error);
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(200).json({ success: false, error: "⚠️ MISSING API KEY: You must open backend/.env and insert your real GEMINI_API_KEY to use the chat interface!" });
+    if (!process.env.OPENROUTER_API_KEY) {
+      return res.status(200).json({ success: false, error: "⚠️ MISSING API KEY: You must open backend/.env and insert your real OPENROUTER_API_KEY to use the chat interface!" });
     }
     res.status(500).json({ success: false, error: error.message || "AI Parsing failed or database error occurred." });
   }

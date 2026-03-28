@@ -1,9 +1,34 @@
-const { GoogleGenAI } = require('@google/genai');
+const axios = require('axios');
+
+async function callAI(prompt) {
+  const apiKey = process.env.OPENROUTER_API_KEY ? process.env.OPENROUTER_API_KEY.trim() : '';
+  
+  try {
+    const response = await axios.post(
+      'https://openrouter.ai/api/v1/chat/completions',
+      {
+        model: "mistralai/mistral-7b-instruct:free",
+        messages: [{ role: "user", content: prompt }]
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return response.data.choices[0].message.content;
+  } catch (error) {
+    console.error("OpenRouter API Error: ", error.response?.data || error.message);
+    throw new Error(
+      error.response?.data?.error?.message || 
+      error.message || 
+      "Failed to communicate with OpenRouter API."
+    );
+  }
+}
 
 async function processUserIntent(naturalQuery, chatHistory, availableCollections, allSchemasSummary, activeCollection, dbEngine) {
-  const apiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/['"]/g, '') : '';
-  const ai = new GoogleGenAI({ apiKey: apiKey });
-
   const prompt = `
 You are a highly capable AI Database Assistant for managing a NoSQL database. 
 Your goal is to parse user intents and generate executable queries dynamically. 
@@ -73,25 +98,19 @@ Analyze the input and generate the JSON object:
 `;
 
   try {
-    const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: prompt
-    });
-
-    let resultText = response.candidates[0].content.parts[0].text;
-    resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const resultTextRaw = await callAI(prompt);
+    
+    let resultText = resultTextRaw.replace(/```json/g, '').replace(/```/g, '').trim();
 
     const parsedJson = JSON.parse(resultText);
     return parsedJson;
   } catch (error) {
     console.error("AI Generate Error: ", error);
-    if (error.status === 429) {
-      throw new Error("Google AI explicitly blocked the request (Error 429: Too Many Requests). Please wait a minute or check your Free Tier API Key limits.");
-    }
-    throw new Error("Failed to process user intent using the AI Model.");
+    throw new Error("Failed to process user intent using the AI Model. Please try again.");
   }
 }
 
 module.exports = {
-  processUserIntent
+  processUserIntent,
+  callAI
 };
