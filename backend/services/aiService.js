@@ -17,7 +17,19 @@ async function callAI(prompt) {
         }
       }
     );
-    return response.data.choices[0].message.content;
+
+    // 🧪 DEBUG STEP: Log full response for debugging
+    console.log(JSON.stringify(response.data, null, 2));
+
+    const aiText = response.data?.choices?.[0]?.message?.content;
+    
+    // If AI returns empty or undefined: return a safe fallback message
+    if (!aiText) {
+      console.error("AI returned empty/undefined response.");
+      return `{ "action": "GENERAL_CHAT", "replyMessage": "I'm having trouble connecting to the AI brain right now. Please try again in a moment." }`;
+    }
+
+    return aiText;
   } catch (error) {
     console.error("OpenRouter API Error: ", error.response?.data || error.message);
     throw new Error(
@@ -106,7 +118,7 @@ Analyze the input and generate the JSON object:
     return parsedJson;
   } catch (error) {
     console.error("AI Generate Error: ", error);
-    throw new Error("Failed to process user intent using the AI Model. Please try again.");
+    throw new Error(error.message || "Failed to process user intent using the AI Model. Please try again.");
   }
 }
 
