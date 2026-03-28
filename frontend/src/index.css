@@ -179,11 +179,12 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   z-index: 100;
-  padding: 24px;
+  padding: 120px 24px 60px 24px; /* Added padding to prevent overlap and center visually instead of justify-content center */
   animation: scaleIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  overflow: hidden;
+  overflow-y: auto; /* Ensure it scrolls */
+  overflow-x: hidden;
 }
 
 /* Dynamic Colorful background lighting */
