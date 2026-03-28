@@ -7,6 +7,10 @@ const xlsx = require('xlsx');
 const aiService = require('../services/aiService');
 const dbQueryExecutor = require('../services/dbQueryExecutor');
 
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+}
+
 const upload = multer({ dest: 'uploads/' });
 
 router.get('/collections', (req, res) => {
