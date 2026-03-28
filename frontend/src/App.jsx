@@ -9,6 +9,7 @@ const BASE_URL = "https://ai-db-backend1.onrender.com/api";
 function App() {
   const [dbEngine, setDbEngine] = useState(null);
   const [showSplash, setShowSplash] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const defaultMessage = {
     sender: 'bot',
@@ -446,9 +447,15 @@ function App() {
            </div>
         </nav>
 
+        {/* MOBILE HEADER */}
+        <div className="mobile-header">
+           <h1 style={{fontSize: '1.2rem', fontWeight: 'bold'}} className="brand-icon">⚡ Nexus DB</h1>
+           <button className="mobile-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
+        </div>
+
         <div className="app-wrapper">
           {/* Sidebar */}
-          <aside className="sidebar">
+          <aside className={`sidebar ${sidebarOpen ? "open" : ""} overflow-hidden md:overflow-auto`}>
             <input 
                 type="file" 
                 ref={fileInputRef} 
