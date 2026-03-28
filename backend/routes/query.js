@@ -124,6 +124,20 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
+let lastCallTime = 0;
+
+async function safeCallAI(naturalQuery, history, availableCollections, allSchemasSummary, activeCollection, dbEngine) {
+  const now = Date.now();
+
+  if (now - lastCallTime < 2000) {
+    throw new Error("Too many requests. Please wait.");
+  }
+
+  lastCallTime = now;
+
+  return await aiService.processUserIntent(naturalQuery, history, availableCollections, allSchemasSummary, activeCollection, dbEngine);
+}
+
 router.post('/chat', async (req, res) => {
   const { naturalQuery, history, activeCollection, dbEngine } = req.body;
 
@@ -136,7 +150,7 @@ router.post('/chat', async (req, res) => {
     const allSchemasSummary = dbQueryExecutor.getAllSchemasSummary(dbEngine);
 
     // Parse user intent
-    const intent = await aiService.processUserIntent(naturalQuery, history || [], availableCollections, allSchemasSummary, activeCollection, dbEngine);
+    const intent = await safeCallAI(naturalQuery, history || [], availableCollections, allSchemasSummary, activeCollection, dbEngine);
 
     if (intent.action === 'CREATE_COLLECTION' && intent.createDetails) {
       // Validate that we have the table name and columns
