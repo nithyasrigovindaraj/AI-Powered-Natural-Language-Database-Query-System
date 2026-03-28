@@ -1,8 +1,9 @@
 const { GoogleGenAI } = require('@google/genai');
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }); // User should place key in .env
-
 async function processUserIntent(naturalQuery, chatHistory, availableCollections, allSchemasSummary, activeCollection, dbEngine) {
+  const apiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/['"]/g, '') : '';
+  const ai = new GoogleGenAI({ apiKey: apiKey });
+
   const prompt = `
 You are a highly capable AI Database Assistant for managing a NoSQL database. 
 Your goal is to parse user intents and generate executable queries dynamically. 
@@ -73,11 +74,11 @@ Analyze the input and generate the JSON object:
 
   try {
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',
         contents: prompt
     });
 
-    let resultText = response.text;
+    let resultText = response.candidates[0].content.parts[0].text;
     resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
 
     const parsedJson = JSON.parse(resultText);

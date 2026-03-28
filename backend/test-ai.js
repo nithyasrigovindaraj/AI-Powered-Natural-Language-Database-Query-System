@@ -3,12 +3,13 @@ const { GoogleGenAI } = require('@google/genai');
 
 async function run() {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const apiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/['"]/g, '') : '';
+    const ai = new GoogleGenAI({ apiKey: apiKey });
     const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-1.5-flash',
         contents: 'Test prompt'
     });
-    console.log("Success:", response.text);
+    console.log("Success:", response.candidates[0].content.parts[0].text);
   } catch (error) {
     console.error("SDK Error:", error);
   }
